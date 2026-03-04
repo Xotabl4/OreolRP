@@ -1,0 +1,5 @@
+node_modules
+
+# Security and Obfuscation
+.env
+src/core/
