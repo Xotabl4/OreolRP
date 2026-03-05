@@ -1,7 +1,35 @@
 <template>
-  <div class="wiki-layout">
+  <div 
+    class="wiki-layout"
+    @touchstart="handleTouchStart"
+    @touchmove="handleTouchMove"
+    @touchend="handleTouchEnd"
+  >
     <ParticlesBackground />
-    <div class="wiki-sidebar">
+    
+    <!-- Перетаскиваемый ярлычок на левом краю -->
+    <div 
+      class="edge-swipe-handle" 
+      :class="{ 'mobile-open': isSidebarOpen }" 
+      :style="handleDragStyle"
+      @click="isSidebarOpen = !isSidebarOpen"
+    >
+      <div class="handle-tab"></div>
+    </div>
+    
+    <!-- Затемнение фона при открытом меню на мобилке -->
+    <div 
+      class="mobile-overlay" 
+      :class="{ 'active': isSidebarOpen }" 
+      @click="isSidebarOpen = false"
+      :style="overlayStyle"
+    ></div>
+
+    <div 
+      class="wiki-sidebar" 
+      :class="{ 'mobile-open': isSidebarOpen }"
+      :style="sidebarDragStyle"
+    >
       <div class="sidebar-header">
         <h2>Wiki Oreol RP</h2>
         <button v-if="isAdmin && isEditingMode" class="btn btn-primary add-cat-btn" @click="createNewCategory">
@@ -34,12 +62,13 @@
               :to="`/wiki/${cat.id}/${article.id}`"
               class="article-link"
               :class="{ 'active': activeArticleId === article.id || (route.params.article === article.id && !activeArticleId) }"
+              @click="isSidebarOpen = false"
             >
               {{ article.title }}
             </router-link>
             
             <div v-if="isAdmin && isEditingMode" class="add-article-btn-wrapper" @click.stop>
-              <button class="btn btn-secondary add-article-btn" @click="createNewArticle(cat.id)">
+              <button class="btn btn-secondary add-article-btn" @click="createNewArticle(cat.id); isSidebarOpen = false">
                 + Статья
               </button>
             </div>
@@ -144,6 +173,90 @@ const isEditingMode = inject('isEditingMode')
 const isAdmin = ref(true) 
 
 const isCreating = ref(false)
+const isSidebarOpen = ref(false) // Состояние мобильного меню
+
+// Логика свайпов и перетаскивания (drag) для мобилок
+let touchStartX = 0
+const sidebarWidth = 300
+const isDragging = ref(false)
+const dragOffset = ref(0) // Смещение от левого края (от -300 до 0)
+
+const sidebarDragStyle = computed(() => {
+  if (!isDragging.value || window.innerWidth > 992) return {}
+  return {
+    transform: `translateX(${dragOffset.value}px)`,
+    transition: 'none'
+  }
+})
+
+const handleDragStyle = computed(() => {
+  if (!isDragging.value || window.innerWidth > 992) return {}
+  return {
+    transform: `translateX(${sidebarWidth + dragOffset.value}px)`,
+    transition: 'none'
+  }
+})
+
+const overlayStyle = computed(() => {
+  if (!isDragging.value) return {}
+  const progress = (sidebarWidth + dragOffset.value) / sidebarWidth
+  return {
+    opacity: Math.max(0, Math.min(1, progress)),
+    transition: 'none',
+    display: 'block'
+  }
+})
+
+
+const handleTouchStart = (e) => {
+  if (window.innerWidth > 992) return
+  touchStartX = e.touches[0].clientX
+  isDragging.value = false
+  
+  // Проверяем, тащим ли мы за ярлычок 
+  if (!isSidebarOpen.value && touchStartX < 50) {
+    isDragging.value = true
+    dragOffset.value = -sidebarWidth // Начинаем из скрытого положения
+  } else if (isSidebarOpen.value) {
+    // Если меню уже открыто, любой свайп слева-направо может начать закрытие
+    isDragging.value = true
+    dragOffset.value = 0 // Начинаем из открытого
+  }
+}
+
+const handleTouchMove = (e) => {
+  if (!isDragging.value) return
+  
+  const currentTouchX = e.touches[0].clientX
+  const distance = currentTouchX - touchStartX
+  
+  // Вычисляем новое положение
+  let newOffset = (isSidebarOpen.value ? 0 : -sidebarWidth) + distance
+  
+  // Ограничиваем пределы (от -300 до 0)
+  newOffset = Math.max(-sidebarWidth, Math.min(0, newOffset))
+  
+  dragOffset.value = newOffset
+  
+  // Предотвращаем конфликты с интерфейсом
+  if (e.cancelable && Math.abs(distance) > 10) {
+    e.preventDefault()
+  }
+}
+
+const handleTouchEnd = () => {
+  if (!isDragging.value) return
+  
+  isDragging.value = false
+  
+  // Логика защелкивания
+  if (dragOffset.value > -sidebarWidth / 2) {
+    isSidebarOpen.value = true // Открыто
+  } else {
+    isSidebarOpen.value = false // Закрыто
+  }
+}
+
 const currentArticle = ref(null)
 const editingArticleId = ref(null)
 
@@ -496,6 +609,7 @@ const saveNewArticle = () => {
   margin-top: 80px; /* Отступ сверху под шапку и центрирование */
   height: calc(100vh - 80px); /* Строго на оставшийся экран, чтобы убить второй скролл */
   overflow: hidden;
+  touch-action: pan-y; /* Важно для работы горизонтальных свайпов! */
 }
 
 .wiki-sidebar {
@@ -521,6 +635,98 @@ const saveNewArticle = () => {
 .wiki-sidebar::-webkit-scrollbar {
   display: none;
 }
+
+/* --- Стили для мобильного меню (свайп панель) --- */
+.edge-swipe-handle {
+  display: none; /* Скрыто на десктопе */
+}
+
+.mobile-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.mobile-overlay.active {
+  opacity: 1;
+}
+
+@media (max-width: 992px) {
+  /* Тонкая полоска с ушком на левом краю, которая передвигается с меню */
+  .edge-swipe-handle {
+    display: flex;
+    align-items: center;
+    position: fixed;
+    top: 80px; /* Ниже шапки */
+    left: 0;
+    width: 25px; /* Ширина области захвата */
+    height: calc(100vh - 80px);
+    z-index: 1002;
+    cursor: grab;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Во время тапа заменяем курсор */
+  .edge-swipe-handle:active {
+    cursor: grabbing;
+  }
+
+  .edge-swipe-handle.mobile-open {
+    transform: translateX(300px); /* Едет вслед за правым краем меню (ширина 300px) */
+  }
+
+  .handle-tab {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px; /* Шире */
+    height: 80px; /* Выше */
+    background: var(--accent-primary);
+    border-radius: 0 8px 8px 0;
+    box-shadow: 2px 0 10px rgba(251, 146, 60, 0.6);
+    transition: width 0.2s, background 0.2s;
+  }
+  
+  .edge-swipe-handle:active .handle-tab {
+    width: 10px;
+    background: var(--accent-secondary);
+  }
+
+  .mobile-overlay.active {
+    display: block;
+  }
+
+  .wiki-sidebar {
+    position: fixed;
+    top: 80px; /* Ниже шапки */
+    left: 0; /* Базовое значение 0, заменяем transform вместо left */
+    transform: translateX(-300px); /* Скрыто за левым краем (ширина 300px) */
+    width: 300px;
+    height: calc(100vh - 80px);
+    z-index: 1001;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+    border-right: 2px solid var(--accent-primary); /* Тонкая оранжевая полоска всей длиной */
+  }
+
+  .wiki-sidebar.mobile-open {
+    transform: translateX(0); /* Выезжает полностью */
+  }
+
+  .wiki-content {
+    padding-left: 20px; /* Убираем огромный левый отступ, так как сайдбара больше нет сбоку */
+  }
+}
+/* --------------------------------- */
 
 @media (min-width: 1200px) {
   .wiki-sidebar {
