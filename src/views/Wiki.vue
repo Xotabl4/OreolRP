@@ -160,48 +160,46 @@ const newArticle = ref({
 // Пустой список категорий, так как мы удалили моки
 const categories = ref([])
 
-// Плавная прокрутка к категории или статье при изменении маршрута
-watch(() => route.params, (params) => {
-  if (!isCreating.value) {
-    // Если роут изменился из-за ручного скроллинга мышкой,
-    // мы НЕ должны плавно прокручивать страницу в DOM
-    if (isScrollSpying.value) {
-       return;
-    }
+// Выносим логику скролла в отдельную функцию
+const scrollToRouteTarget = () => {
+  if (isCreating.value || isScrollSpying.value) return;
+  const params = route.params;
 
-    nextTick(() => {
-      let elId = null;
-      if (params.article) {
-        elId = `article-${params.article}`;
-        if (!isUpdatingScroll.value) activeArticleId.value = params.article;
-      } else if (params.category) {
-        elId = `category-${params.category}`;
-      }
-      
-      if (elId && !isUpdatingScroll.value) {
-        const el = document.getElementById(elId);
-        if (el) {
-          isUpdatingScroll.value = true;
-          // Плавно скроллим к нужной статье в списке, если она не слишком далеко
-          const targetTop = el.offsetTop - 40;
-          const distance = Math.abs(contentRef.value.scrollTop - targetTop);
-          const isFar = distance > 1000;
-          
-          contentRef.value.scrollTo({
-             top: targetTop,
-             behavior: isFar ? 'auto' : 'smooth'
-          });
-          
-          setTimeout(() => { isUpdatingScroll.value = false; }, isFar ? 100 : 800);
-        } else {
-           isUpdatingScroll.value = false;
-        }
+  nextTick(() => {
+    let elId = null;
+    if (params.article) {
+      elId = `article-${params.article}`;
+      if (!isUpdatingScroll.value) activeArticleId.value = params.article;
+    } else if (params.category) {
+      elId = `category-${params.category}`;
+    }
+    
+    if (elId && !isUpdatingScroll.value) {
+      const el = document.getElementById(elId);
+      if (el && contentRef.value) {
+        isUpdatingScroll.value = true;
+        // Плавно скроллим к нужной статье в списке, если она не слишком далеко
+        const targetTop = el.offsetTop - 40;
+        const distance = Math.abs(contentRef.value.scrollTop - targetTop);
+        const isFar = distance > 1000;
+        
+        contentRef.value.scrollTo({
+           top: targetTop,
+           behavior: isFar ? 'auto' : 'smooth'
+        });
+        
+        setTimeout(() => { isUpdatingScroll.value = false; }, isFar ? 100 : 800);
       } else {
          isUpdatingScroll.value = false;
       }
-    });
-  }
-}, { immediate: true });
+    } else {
+       isUpdatingScroll.value = false;
+    }
+  });
+};
+
+// Плавная прокрутка к категории или статье при изменении маршрута
+watch(() => route.params, scrollToRouteTarget, { immediate: true });
 
 
 const handleScroll = () => {
@@ -278,6 +276,8 @@ const saveWikiToDB = async () => {
   }
 };
 
+let isInitialLoadDone = false;
+
 onMounted(() => {
   // Подписываемся на изменения в реальном времени из Firebase
   const wikiDataRef = dbRef(db, 'wiki/categories');
@@ -291,6 +291,15 @@ onMounted(() => {
       }
       return dbCat;
     });
+
+    // После первой загрузки данных с Firebase принудительно скроллим к нужной статье, если она есть в URL
+    if (!isInitialLoadDone && data.length > 0) {
+      isInitialLoadDone = true;
+      // Используем nextTick и небольшой timeout для гарантии рендеринга V-for
+      nextTick(() => {
+        setTimeout(scrollToRouteTarget, 200);
+      });
+    }
   });
 });
 
