@@ -1,5 +1,6 @@
 <template>
   <div class="wiki-layout">
+    <ParticlesBackground />
     <div class="wiki-sidebar">
       <div class="sidebar-header">
         <h2>Wiki Oreol RP</h2>
@@ -132,6 +133,7 @@
 import { ref, computed, inject, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import WikiEditor from '../components/WikiEditor.vue'
+import ParticlesBackground from '../components/ParticlesBackground.vue'
 import { db } from '../firebase'
 import { ref as dbRef, onValue, set } from "firebase/database"
 
@@ -684,7 +686,7 @@ const saveNewArticle = () => {
   box-sizing: border-box;
   overflow-y: auto;
   position: relative;
-  background: var(--bg-color);
+  background: transparent;
   
   /* Скрываем скроллбар полностью */
   scrollbar-width: none; /* Для Firefox */
