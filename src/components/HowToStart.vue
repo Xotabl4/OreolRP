@@ -55,15 +55,14 @@
               tag="p"
               :isEditingGlobally="isEditingMode"
             />
-            <EditableText 
-              contentKey="how-to-step2-btn"
-              defaultText="Скачать FiveM"
-              tag="a"
+            <a 
               href="https://fivem.net/"
               target="_blank"
-              :isEditingGlobally="isEditingMode"
+              rel="noopener noreferrer"
               class="btn btn-secondary btn-small"
-            />
+            >
+              Скачать FiveM
+            </a>
           </div>
         </div>
 
@@ -84,14 +83,14 @@
               tag="p"
               :isEditingGlobally="isEditingMode"
             />
-            <EditableText 
-              contentKey="how-to-step3-btn"
-              defaultText="Отправить заявку"
-              tag="a"
-              href="#"
-              :isEditingGlobally="isEditingMode"
+            <a 
+              href="https://discord.gg/RVehWXeTkx"
+              target="_blank"
+              rel="noopener noreferrer"
               class="btn btn-primary btn-small"
-            />
+            >
+              Отправить заявку
+            </a>
           </div>
         </div>
       </div>

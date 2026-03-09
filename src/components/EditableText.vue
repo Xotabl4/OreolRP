@@ -177,6 +177,7 @@ const saveChanges = async () => {
       :is="tag" 
       v-html="content"
       class="display-content"
+      @click="$emit('click', $event)"
     ></component>
 
     <!-- PENCIL ICON (HOVER) -->

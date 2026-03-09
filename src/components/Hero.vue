@@ -19,22 +19,18 @@
         v-reveal
       />
       <div v-reveal class="hero-buttons delay-2">
-        <EditableText 
-          contentKey="hero-btn-primary"
-          defaultText='Начать играть'
-          tag="a"
+        <a 
           href="#how-to-start"
-          :isEditingGlobally="isEditingMode"
           class="btn btn-primary btn-large"
-        />
-        <EditableText 
-          contentKey="hero-btn-secondary"
-          defaultText='Узнать больше'
-          tag="a"
+        >
+          Начать играть
+        </a>
+        <a 
           href="#about"
-          :isEditingGlobally="isEditingMode"
           class="btn btn-secondary btn-large outline"
-        />
+        >
+          Узнать больше
+        </a>
       </div>
     </div>
     
